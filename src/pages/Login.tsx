@@ -157,48 +157,41 @@ const Login: React.FC = () => {
                 setError('');
                 setIsLoading(true);
                 
-                // Mostrar aviso sobre OAuth
-                const proceed = window.confirm(
-                  '⚠️ Login com Google temporariamente indisponível\n\n' +
-                  'Motivo: Configuração OAuth pendente\n\n' +
-                  '✅ Recomendação: Use email/senha acima\n\n' +
-                  'Deseja tentar Google mesmo assim?'
-                );
-
-                if (!proceed) {
-                  setError('💡 Use o formulário de email/senha acima para fazer login.');
-                  return;
-                }
-
-                // Tentar OAuth se usuário insistir
+                // Limpar sessão existente
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {
                   await supabase.auth.signOut();
                 }
                 
+                // Tentar autenticação OAuth
                 const { error } = await supabase.auth.signInWithOAuth({
                   provider: 'google',
                   options: {
-                    redirectTo: window.location.origin
+                    redirectTo: `${window.location.origin}`,
+                    queryParams: {
+                      access_type: 'offline',
+                      prompt: 'select_account'
+                    }
                   }
                 });
                 
                 if (error) {
+                  console.error('Erro OAuth:', error);
                   if (error.message.includes('redirect_uri_mismatch')) {
-                    setError('❌ OAuth não configurado. Use email/senha por enquanto.');
+                    setError('❌ Erro de configuração OAuth. Verifique as URLs no Supabase.');
                   } else {
                     setError('❌ Erro Google: ' + error.message);
                   }
                 }
               } catch (error) {
                 console.error('❌ Erro inesperado:', error);
-                setError('❌ Use email/senha por enquanto.');
+                setError('❌ Erro inesperado. Tente email/senha.');
               } finally {
                 setIsLoading(false);
               }
             }}
             disabled={isLoading}
-            className="w-full bg-gray-400 hover:bg-gray-500 disabled:bg-gray-300 text-white font-medium py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2 opacity-75"
+            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-medium py-3 rounded-lg transition-colors duration-300 flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

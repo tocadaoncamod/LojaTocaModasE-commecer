@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Phone, Eye, EyeOff, Store, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import CpfCnpjInput from '../components/CpfCnpjInput';
 
 const RegisterSeller: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const RegisterSeller: React.FC = () => {
     storeName: '',
     cpfCnpj: ''
   });
+  const [isCpfCnpjValid, setIsCpfCnpjValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,24 +37,12 @@ const RegisterSeller: React.FC = () => {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
   };
 
-  const formatCpfCnpj = (value: string) => {
-    // Remove tudo que não é número
-    const numbers = value.replace(/\D/g, '');
-    
-    // CPF: 000.000.000-00 (11 dígitos)
-    if (numbers.length <= 11) {
-      if (numbers.length <= 3) return numbers;
-      if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
-      if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
-      return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
-    }
-    // CNPJ: 00.000.000/0000-00 (14 dígitos)
-    else {
-      if (numbers.length <= 2) return numbers;
-      if (numbers.length <= 5) return `${numbers.slice(0, 2)}.${numbers.slice(2)}`;
-      if (numbers.length <= 8) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5)}`;
-      if (numbers.length <= 12) return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8)}`;
-      return `${numbers.slice(0, 2)}.${numbers.slice(2, 5)}.${numbers.slice(5, 8)}/${numbers.slice(8, 12)}-${numbers.slice(12, 14)}`;
+  const handleCpfCnpjChange = (value: string, isValid: boolean) => {
+    setFormData(prev => ({ ...prev, cpfCnpj: value }));
+    setIsCpfCnpjValid(isValid);
+    // Limpar erro quando usuário começar a digitar
+    if (errors.cpfCnpj) {
+      setErrors(prev => ({ ...prev, cpfCnpj: '' }));
     }
   };
 
@@ -97,11 +87,8 @@ const RegisterSeller: React.FC = () => {
     // Validar CPF/CNPJ
     if (!formData.cpfCnpj) {
       newErrors.cpfCnpj = 'CPF ou CNPJ é obrigatório';
-    } else {
-      const numbers = formData.cpfCnpj.replace(/\D/g, '');
-      if (numbers.length !== 11 && numbers.length !== 14) {
-        newErrors.cpfCnpj = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos';
-      }
+    } else if (!isCpfCnpjValid) {
+      newErrors.cpfCnpj = 'CPF ou CNPJ inválido';
     }
 
     setErrors(newErrors);
@@ -238,22 +225,13 @@ const RegisterSeller: React.FC = () => {
 
           {/* CPF/CNPJ Field */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              CPF ou CNPJ *
-            </label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                value={formData.cpfCnpj}
-                onChange={(e) => handleInputChange('cpfCnpj', formatCpfCnpj(e.target.value))}
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.cpfCnpj ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                maxLength={18}
-              />
-            </div>
+            <CpfCnpjInput
+              value={formData.cpfCnpj}
+              onChange={handleCpfCnpjChange}
+              label="CPF ou CNPJ *"
+              required
+              showValidation
+            />
             {errors.cpfCnpj && (
               <p className="text-red-500 text-xs mt-1">{errors.cpfCnpj}</p>
             )}

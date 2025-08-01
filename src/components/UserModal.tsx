@@ -117,52 +117,35 @@ const UserModal: React.FC<UserModalProps> = ({ isOpen, onClose, onLoginSuccess }
     setError('');
 
     try {
-      // Mostrar modal de aviso sobre OAuth
-      const useEmailLogin = window.confirm(
-        '🔧 Login com Google temporariamente indisponível\n\n' +
-        'Motivo: Configuração OAuth pendente no servidor\n\n' +
-        '✅ Alternativa: Use login com email/senha\n\n' +
-        'Clique OK para continuar com email ou Cancelar para tentar Google'
-      );
-
-      if (useEmailLogin) {
-        // Fechar modal atual e mostrar que deve usar email
-        setError('');
-        alert('👍 Perfeito! Use o formulário de email/senha acima para fazer login.');
-        return;
+      // Limpar sessão existente se houver
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.auth.signOut();
       }
 
-      // Se usuário insistir em tentar Google, tentar mesmo assim
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          await supabase.auth.signOut();
-        }
-
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'select_account'
-            }
-          }
-        });
-
-        if (error) {
-          if (error.message.includes('redirect_uri_mismatch')) {
-            setError('❌ Configuração OAuth pendente. Use login com email/senha por enquanto.');
-          } else {
-            setError('Erro no login com Google: ' + error.message);
+      // Tentar autenticação OAuth com Google
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account'
           }
         }
-      } catch (oauthError) {
-        setError('❌ OAuth indisponível. Use login com email/senha.');
+      });
+
+      if (error) {
+        console.error('Erro OAuth Google:', error);
+        if (error.message.includes('redirect_uri_mismatch')) {
+          setError('❌ Configuração OAuth pendente. Verifique as URLs no Supabase Dashboard.');
+        } else {
+          setError('Erro no login com Google: ' + error.message);
+        }
       }
     } catch (error) {
       console.error('❌ Erro inesperado no Google Auth:', error);
-      setError('❌ Use login com email/senha por enquanto.');
+      setError('❌ Erro inesperado. Tente novamente ou use email/senha.');
     } finally {
       setIsLoading(false);
     }

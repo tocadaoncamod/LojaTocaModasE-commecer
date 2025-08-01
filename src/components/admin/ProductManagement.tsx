@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Product, useProducts } from '../../hooks/useProducts';
 import { supabase } from '../../lib/supabase';
+import ImageUpload from '../ImageUpload';
 
 const ProductManagement: React.FC = () => {
   const { products, loading, error, refreshProducts } = useProducts();
@@ -29,9 +30,7 @@ const ProductManagement: React.FC = () => {
     category: 'Feminino'
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<string>('');
@@ -47,44 +46,6 @@ const ProductManagement: React.FC = () => {
       style: 'currency',
       currency: 'BRL'
     });
-  };
-
-  // Function to upload multiple images to Supabase Storage
-  const uploadProductImages = async (productId: number, files: FileList): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${productId}_${Date.now()}_${i}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      try {
-        // Upload file to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error('Error uploading file:', uploadError);
-          throw uploadError;
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-
-        if (urlData?.publicUrl) {
-          uploadedUrls.push(urlData.publicUrl);
-        }
-      } catch (error) {
-        console.error('Error processing file:', file.name, error);
-        throw error;
-      }
-    }
-    
-    return uploadedUrls;
   };
 
   // Function to save image URLs to product_images table
@@ -107,34 +68,12 @@ const ProductManagement: React.FC = () => {
     }
   };
 
-  // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    setSelectedFiles(files);
-    
-    if (files) {
-      // Create preview URLs
-      const previews: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type.startsWith('image/')) {
-          previews.push(URL.createObjectURL(file));
-        }
-      }
-      setImagePreview(previews);
-    } else {
-      setImagePreview([]);
+  const handleImageUpload = (urls: string[]) => {
+    setUploadedImageUrls(prev => [...prev, ...urls]);
+    // Use first uploaded image as main image if none set
+    if (!formData.imageUrl && urls.length > 0) {
+      handleInputChange('imageUrl', urls[0]);
     }
-  };
-
-  // Clean up preview URLs
-  const cleanupPreviews = () => {
-    imagePreview.forEach(url => {
-      if (url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-      }
-    });
-    setImagePreview([]);
   };
 
   const handleCsvUpload = async () => {
@@ -309,8 +248,7 @@ const ProductManagement: React.FC = () => {
       category: 'Feminino'
     });
     setFormErrors({});
-    setSelectedFiles(null);
-    cleanupPreviews();
+    setUploadedImageUrls([]);
   };
 
   const openAddModal = () => {
@@ -353,7 +291,7 @@ const ProductManagement: React.FC = () => {
       errors.oldPrice = 'Preço antigo deve ser maior que o preço atual';
     }
     
-    if (!editingProduct && !selectedFiles && !formData.imageUrl?.trim()) {
+    if (!editingProduct && uploadedImageUrls.length === 0 && !formData.imageUrl?.trim()) {
       errors.imageUrl = 'Pelo menos uma imagem é obrigatória';
     }
     
@@ -372,7 +310,7 @@ const ProductManagement: React.FC = () => {
       return;
     }
     
-    setUploadingImages(true);
+    const isSubmitting = true;
     
     try {
       if (editingProduct) {
@@ -395,11 +333,10 @@ const ProductManagement: React.FC = () => {
           return;
         }
         
-        // Handle new images for existing product
-        if (selectedFiles && selectedFiles.length > 0) {
+        // Handle uploaded images for existing product
+        if (uploadedImageUrls.length > 0) {
           try {
-            const imageUrls = await uploadProductImages(editingProduct.id, selectedFiles);
-            await saveProductImages(editingProduct.id, imageUrls);
+            await saveProductImages(editingProduct.id, uploadedImageUrls);
           } catch (imageError) {
             console.error('Error uploading images:', imageError);
             alert('Produto atualizado, mas houve erro ao fazer upload das imagens.');
@@ -426,12 +363,11 @@ const ProductManagement: React.FC = () => {
           return;
         }
         
-        // Handle images for new product
-        if (data && data[0] && selectedFiles && selectedFiles.length > 0) {
+        // Handle uploaded images for new product
+        if (data && data[0] && uploadedImageUrls.length > 0) {
           try {
             const productId = data[0].id;
-            const imageUrls = await uploadProductImages(productId, selectedFiles);
-            await saveProductImages(productId, imageUrls);
+            await saveProductImages(productId, uploadedImageUrls);
           } catch (imageError) {
             console.error('Error uploading images:', imageError);
             alert('Produto criado, mas houve erro ao fazer upload das imagens.');
@@ -448,7 +384,7 @@ const ProductManagement: React.FC = () => {
       console.error('Error saving product:', error);
       alert('Erro inesperado ao salvar produto: ' + (error as Error).message);
     } finally {
-      setUploadingImages(false);
+      // Reset submitting state
     }
   };
 
@@ -709,48 +645,15 @@ const ProductManagement: React.FC = () => {
                   Imagens do Produto *
                 </label>
                 
-                {/* File Upload */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-2 text-gray-500" />
-                        <p className="mb-2 text-sm text-gray-500">
-                          <span className="font-semibold">Clique para fazer upload</span> ou arraste as imagens
-                        </p>
-                        <p className="text-xs text-gray-500">PNG, JPG, JPEG (MAX. 5MB cada)</p>
-                      </div>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {/* Image Previews */}
-                {imagePreview.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Pré-visualização:</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {imagePreview.map((preview, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-20 object-cover rounded border"
-                          />
-                          <div className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-1 rounded">
-                            {index === 0 ? 'Principal' : index + 1}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Supabase Storage Upload */}
+                <ImageUpload
+                  onUpload={handleImageUpload}
+                  maxFiles={5}
+                  maxSizePerFile={5}
+                  bucket="product-images"
+                  folder="products"
+                  className="mb-3"
+                />
 
                 {/* URL Input (fallback) */}
                 <div>
@@ -771,7 +674,7 @@ const ProductManagement: React.FC = () => {
                 {formErrors.imageUrl && (
                   <p className="text-red-500 text-xs mt-1">{formErrors.imageUrl}</p>
                 )}
-                {formData.imageUrl && !imagePreview.length && (
+                {formData.imageUrl && uploadedImageUrls.length === 0 && (
                   <div className="mt-2">
                     <img
                       src={formData.imageUrl}
@@ -788,25 +691,14 @@ const ProductManagement: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  disabled={uploadingImages}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
-                  {uploadingImages ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Fazendo Upload...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      {editingProduct ? 'Salvar Alterações' : 'Criar Produto'}
-                    </>
-                  )}
+                  <Save className="h-4 w-4" />
+                  {editingProduct ? 'Salvar Alterações' : 'Criar Produto'}
                 </button>
                 <button
                   type="button"
                   onClick={closeModal}
-                  disabled={uploadingImages}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 text-gray-800 font-semibold py-3 rounded-lg transition-colors"
                 >
                   Cancelar
