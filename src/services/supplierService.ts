@@ -173,7 +173,7 @@ export class SupplierService {
           }
           
           // Se encontrou WhatsApp, parar de procurar
-          if (waMatch) {
+          if (whatsapp) {
             break;
           }
         }
