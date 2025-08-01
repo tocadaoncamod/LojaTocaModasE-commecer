@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Database, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Database, CheckCircle, XCircle, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 const SupabaseConnectionTest: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
@@ -13,8 +13,12 @@ const SupabaseConnectionTest: React.FC = () => {
   const checkConnection = async () => {
     setIsLoading(true);
     setConnectionStatus('checking');
+    setTestResults({});
     
     try {
+      console.log('🔗 Testando conexão com:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('🔑 Usando chave:', import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Configurada' : 'NÃO CONFIGURADA');
+      
       // Test 1: Check Supabase connection
       const { data: connectionTest, error: connectionError } = await supabase
         .from('products')
@@ -22,9 +26,11 @@ const SupabaseConnectionTest: React.FC = () => {
         .limit(1);
 
       if (connectionError) {
+        console.error('❌ Erro de conexão:', connectionError);
         throw new Error(`Connection failed: ${connectionError.message}`);
       }
 
+      console.log('✅ Conexão estabelecida com sucesso');
       setConnectionStatus('connected');
 
       // Test 2: Load products
@@ -123,19 +129,38 @@ const SupabaseConnectionTest: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <button 
+              onClick={() => {
+                window.location.hash = '';
+                window.location.reload();
+              }}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-gray-600" />
+            </button>
             <div className="flex items-center gap-3">
-              <Database className="h-6 w-6 text-blue-600" />
+              <img 
+                src="https://images.pexels.com/photos/792381/pexels-photo-792381.jpeg?auto=compress&cs=tinysrgb&w=60&h=60" 
+                alt="Logo Onça" 
+                className="w-10 h-10 object-cover rounded-full border-2 border-yellow-400"
+              />
               <div>
-                <h3 className="text-xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900">
                   Status da Conexão Supabase
-                </h3>
+                </h1>
                 <p className="text-gray-600">Verificação completa do banco de dados</p>
               </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <Database className="h-4 w-4" />
+              <span>Diagnóstico técnico do sistema</span>
             </div>
             <button
               onClick={checkConnection}
@@ -149,7 +174,7 @@ const SupabaseConnectionTest: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="bg-white rounded-lg shadow-md p-8 space-y-6">
           {/* Connection Status */}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-3 mb-4">
@@ -255,7 +280,7 @@ const SupabaseConnectionTest: React.FC = () => {
           {/* Environment Info */}
           <div className="bg-yellow-50 rounded-lg p-4">
             <h5 className="font-semibold text-yellow-900 mb-3">Informações do Ambiente:</h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
                 <p><strong>Supabase URL:</strong></p>
                 <p className="text-xs text-gray-600 break-all">
@@ -266,6 +291,12 @@ const SupabaseConnectionTest: React.FC = () => {
                 <p><strong>Anon Key:</strong></p>
                 <p className="text-xs text-gray-600">
                   {import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Configurado ✅' : 'Não configurado ❌'}
+                </p>
+              </div>
+              <div>
+                <p><strong>Ambiente:</strong></p>
+                <p className="text-xs text-gray-600">
+                  {window.location.hostname === 'localhost' ? 'Desenvolvimento 🔧' : 'Produção 🚀'}
                 </p>
               </div>
             </div>
