@@ -33,106 +33,39 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
   const sectionRef = useRef<HTMLElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // FUNÇÃO PARA CARREGAR DADOS REAIS DO SUPABASE
   const loadRealProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      setDebugInfo('🔍 Iniciando busca no Supabase...');
-      
-      console.log('🔍 TESTE REAL: Conectando ao Supabase...');
-      
-      // 1. PRIMEIRO: Testar conexão
-      const { data: connectionTest, error: connectionError } = await supabase
-        .from('teste_produtos_extraidos')
-        .select('count')
-        .limit(1);
-      
-      if (connectionError) {
-        console.error('❌ ERRO DE CONEXÃO:', connectionError);
-        setDebugInfo(`❌ Erro de conexão: ${connectionError.message}`);
-        throw connectionError;
-      }
-      
-      console.log('✅ CONEXÃO OK');
-      setDebugInfo('✅ Conexão estabelecida');
-      
-      // 2. BUSCAR DADOS DA TABELA teste_produtos_extraidos
-      console.log('📊 Buscando dados de teste_produtos_extraidos...');
-      const { data: testData, error: testError } = await supabase
-        .from('teste_produtos_extraidos')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (testError) {
-        console.error('❌ ERRO teste_produtos_extraidos:', testError);
-        setDebugInfo(`❌ Erro teste_produtos_extraidos: ${testError.message}`);
-      } else {
-        console.log('📊 DADOS teste_produtos_extraidos:', testData);
-        setDebugInfo(`📊 teste_produtos_extraidos: ${testData?.length || 0} registros`);
-      }
-      
-      // 3. BUSCAR DADOS DA TABELA products
-      console.log('📦 Buscando dados de products...');
+      setDebugInfo('🔍 Carregando produtos...');
+
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
-      
+
       if (productsError) {
-        console.error('❌ ERRO products:', productsError);
-        setDebugInfo(prev => prev + ` | ❌ Erro products: ${productsError.message}`);
-      } else {
-        console.log('📦 DADOS products:', productsData);
-        setDebugInfo(prev => prev + ` | 📦 products: ${productsData?.length || 0} registros`);
+        console.error('❌ Erro ao carregar produtos:', productsError);
+        setDebugInfo(`❌ Erro: ${productsError.message}`);
+        throw productsError;
       }
-      
-      // 4. DECIDIR QUAL USAR E TRANSFORMAR
-      let finalProducts: Product[] = [];
-      
-      if (testData && testData.length > 0) {
-        console.log('✅ USANDO teste_produtos_extraidos');
-        setDebugInfo(prev => prev + ' | ✅ Usando teste_produtos_extraidos');
-        
-        finalProducts = testData.map((item, index) => {
-          console.log(`📝 Produto ${index + 1}:`, item);
-          
-          return {
-            id: item.id || index + 1,
-            name: item.nome || item.name || `Produto ${index + 1}`,
-            price: parseFloat(String(item.preco || item.price || '0').replace(/[^\d.,]/g, '').replace(',', '.')) || 0,
-            oldPrice: undefined,
-            imageUrl: item.imagem || item.image_url || 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400',
-            category: item.categoria || item.category || 'Geral'
-          };
-        });
-      } else if (productsData && productsData.length > 0) {
-        console.log('✅ USANDO products');
-        setDebugInfo(prev => prev + ' | ✅ Usando products');
-        
-        finalProducts = productsData.map(item => ({
-          id: item.id,
-          name: item.name,
-          price: parseFloat(item.price),
-          oldPrice: item.old_price ? parseFloat(item.old_price) : undefined,
-          imageUrl: item.image_url,
-          category: item.category || 'Geral'
-        }));
-      } else {
-        console.log('⚠️ NENHUM DADO ENCONTRADO');
-        setDebugInfo(prev => prev + ' | ⚠️ Nenhum produto encontrado');
-      }
-      
-      console.log('🎯 PRODUTOS FINAIS:', finalProducts);
-      console.log('🏷️ CATEGORIAS ENCONTRADAS:', [...new Set(finalProducts.map(p => p.category))]);
-      
+
+      const finalProducts: Product[] = productsData.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: parseFloat(item.price),
+        oldPrice: item.old_price ? parseFloat(item.old_price) : undefined,
+        imageUrl: item.image_url,
+        category: item.category || 'Geral'
+      }));
+
       setProducts(finalProducts);
-      setDebugInfo(prev => prev + ` | 🎯 ${finalProducts.length} produtos carregados`);
-      
+      setDebugInfo(`✅ ${finalProducts.length} produtos carregados com sucesso`);
+
     } catch (err) {
-      console.error('❌ ERRO GERAL:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      setDebugInfo(prev => prev + ` | ❌ ERRO: ${err}`);
+      console.error('❌ Erro ao carregar produtos:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar produtos');
+      setDebugInfo(`❌ Erro: ${err}`);
     } finally {
       setLoading(false);
     }
