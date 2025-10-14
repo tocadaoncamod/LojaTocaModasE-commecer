@@ -650,8 +650,8 @@ const ProductManagement: React.FC = () => {
                   onUpload={handleImageUpload}
                   maxFiles={5}
                   maxSizePerFile={5}
-                  bucket="product-images"
-                  folder="products"
+                  bucket="products"
+                  folder=""
                   className="mb-3"
                 />
 
