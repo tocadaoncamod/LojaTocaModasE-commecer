@@ -8,6 +8,38 @@ export interface Product {
   oldPrice?: number;
   imageUrl: string;
   category: string;
+  subcategory?: string;
+  brand?: string;
+  sku?: string;
+  description?: string;
+  material?: string;
+  care_instructions?: string;
+  weight?: number;
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+  };
+  shipping_time_days?: number;
+  warranty_days?: number;
+  tags?: string[];
+  keywords?: string;
+  featured_category?: string;
+  video_url?: string;
+  origin_location?: string;
+  discount_type?: string;
+  discount_value?: number;
+  measurements?: {
+    bust?: string;
+    waist?: string;
+    hips?: string;
+    length?: string;
+  };
+  stock?: number;
+  is_active?: boolean;
+  sales_count?: number;
+  rating_average?: number;
+  images?: string[];
 }
 
 export const useProducts = () => {
@@ -20,58 +52,69 @@ export const useProducts = () => {
       setLoading(true);
       setError(null);
 
-      // Primeiro tentar carregar da tabela teste_produtos_extraidos
-      const { data: testData, error: testError } = await supabase
-        .from('teste_produtos_extraidos')
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (testError) {
-        console.error('Erro ao carregar teste_produtos_extraidos:', testError);
-        throw testError;
+      if (productsError) {
+        console.error('Erro ao carregar produtos:', productsError);
+        throw productsError;
       }
 
-      let transformedProducts: Product[] = [];
+      const productIds = (productsData || []).map(p => p.id);
 
-      if (testData && testData.length > 0) {
-        // Usar dados da tabela teste_produtos_extraidos
-        console.log('✅ Carregando produtos da tabela teste_produtos_extraidos:', testData.length);
-        
-        transformedProducts = testData.map(product => ({
-          id: product.id,
-          name: product.nome || 'Produto sem nome',
-          price: parseFloat(product.preco?.replace('R$', '').replace(',', '.').trim()) || 0,
-          oldPrice: undefined,
-          imageUrl: product.imagem || 'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=400',
-          category: product.categoria || 'Geral'
-        }));
-      } else {
-        // Fallback para tabela products se teste_produtos_extraidos estiver vazia
-        console.log('⚠️ Tabela teste_produtos_extraidos vazia, usando tabela products');
-        
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
+      let imagesMap = new Map<number, string[]>();
+      if (productIds.length > 0) {
+        const { data: imagesData } = await supabase
+          .from('product_images')
           .select('*')
-          .order('created_at', { ascending: false });
+          .in('product_id', productIds)
+          .order('display_order', { ascending: true });
 
-        if (productsError) {
-          console.error('Erro ao carregar products:', productsError);
-          throw productsError;
+        if (imagesData) {
+          imagesData.forEach(img => {
+            if (!imagesMap.has(img.product_id)) {
+              imagesMap.set(img.product_id, []);
+            }
+            imagesMap.get(img.product_id)!.push(img.image_url);
+          });
         }
-
-        transformedProducts = (productsData || []).map(product => ({
-          id: product.id,
-          name: product.name,
-          price: parseFloat(product.price),
-          oldPrice: product.old_price ? parseFloat(product.old_price) : undefined,
-          imageUrl: product.image_url,
-          category: product.category || 'Geral'
-        }));
       }
 
-      console.log('📦 Produtos carregados:', transformedProducts.length);
-      console.log('🏷️ Categorias encontradas:', [...new Set(transformedProducts.map(p => p.category))]);
-      
+      const transformedProducts: Product[] = (productsData || []).map(product => ({
+        id: product.id,
+        name: product.name,
+        price: parseFloat(product.price),
+        oldPrice: product.old_price ? parseFloat(product.old_price) : undefined,
+        imageUrl: product.image_url,
+        category: product.category || 'Geral',
+        subcategory: product.subcategory,
+        brand: product.brand,
+        sku: product.sku,
+        description: product.description,
+        material: product.material,
+        care_instructions: product.care_instructions,
+        weight: product.weight,
+        dimensions: product.dimensions,
+        shipping_time_days: product.shipping_time_days,
+        warranty_days: product.warranty_days,
+        tags: product.tags || [],
+        keywords: product.keywords,
+        featured_category: product.featured_category,
+        video_url: product.video_url,
+        origin_location: product.origin_location,
+        discount_type: product.discount_type,
+        discount_value: product.discount_value,
+        measurements: product.measurements || {},
+        stock: product.stock || 0,
+        is_active: product.is_active !== false,
+        sales_count: product.sales_count || 0,
+        rating_average: product.rating_average || 0,
+        images: imagesMap.get(product.id) || []
+      }));
+
+      console.log('✅ Produtos carregados:', transformedProducts.length);
       setProducts(transformedProducts);
     } catch (err) {
       console.error('❌ Erro ao carregar produtos:', err);
