@@ -48,14 +48,11 @@ const ProductManagement: React.FC = () => {
     });
   };
 
-  // Function to save image URLs to product_images table
   const saveProductImages = async (productId: number, imageUrls: string[]) => {
     const imageRecords = imageUrls.map((url, index) => ({
       product_id: productId,
       image_url: url,
-      display_order: index,
-      is_primary: index === 0, // First image is primary
-      alt_text: formData.name || 'Product image'
+      display_order: index
     }));
 
     const { error } = await supabase

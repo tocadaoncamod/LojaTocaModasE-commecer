@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { ShoppingCart, Heart, Share2, Facebook, Instagram, MessageCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import CategorySidebar from './CategorySidebar';
+import ProductDetailModal from './ProductDetailModal';
 
 interface Product {
   id: number;
@@ -11,6 +12,9 @@ interface Product {
   oldPrice?: number;
   imageUrl: string;
   category: string;
+  description?: string;
+  stock?: number;
+  images?: string[];
 }
 
 interface ProductGridProps {
@@ -30,6 +34,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
   const [isSticky, setIsSticky] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState<number | null>(null);
   const [internalSearchTerm, setInternalSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -50,13 +55,33 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
         throw productsError;
       }
 
+      const productIds = productsData.map(p => p.id);
+      const { data: imagesData } = await supabase
+        .from('product_images')
+        .select('*')
+        .in('product_id', productIds)
+        .order('display_order', { ascending: true });
+
+      const imagesMap = new Map<number, string[]>();
+      if (imagesData) {
+        imagesData.forEach(img => {
+          if (!imagesMap.has(img.product_id)) {
+            imagesMap.set(img.product_id, []);
+          }
+          imagesMap.get(img.product_id)!.push(img.image_url);
+        });
+      }
+
       const finalProducts: Product[] = productsData.map(item => ({
         id: item.id,
         name: item.name,
         price: parseFloat(item.price),
         oldPrice: item.old_price ? parseFloat(item.old_price) : undefined,
         imageUrl: item.image_url,
-        category: item.category || 'Geral'
+        category: item.category || 'Geral',
+        description: item.description,
+        stock: item.stock,
+        images: imagesMap.get(item.id) || []
       }));
 
       setProducts(finalProducts);
@@ -181,7 +206,13 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
     
     setShowShareMenu(null);
   };
+
+  const handleCloseModal = () => {
+    setSelectedProduct(null);
+  };
+
   return (
+    <>
     <section ref={sectionRef} className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
@@ -329,7 +360,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {filteredProducts.map((product) => (
             <div key={product.id} className="group bg-white rounded-lg md:rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden flex flex-col h-full">
-              <div className="relative">
+              <div className="relative cursor-pointer" onClick={() => setSelectedProduct(product)}>
                 <img
                   src={product.imageUrl}
                   alt={product.name}
@@ -342,6 +373,12 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
                   }}
                   loading="lazy"
                 />
+
+                {product.images && product.images.length > 0 && (
+                  <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
+                    📷 {product.images.length} {product.images.length === 1 ? 'foto' : 'fotos'}
+                  </div>
+                )}
                 
                 {/* Discount badge */}
                 {product.oldPrice && (
@@ -418,8 +455,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
                     {product.category}
                   </span>
                 </div>
-                
-                <h3 className="font-semibold text-gray-900 mb-3 text-sm md:text-base leading-tight min-h-[2.5rem] md:min-h-[3rem] flex items-start">
+
+                <h3
+                  className="font-semibold text-gray-900 mb-3 text-sm md:text-base leading-tight min-h-[2.5rem] md:min-h-[3rem] flex items-start cursor-pointer hover:text-blue-600 transition-colors"
+                  onClick={() => setSelectedProduct(product)}
+                >
                   {product.name}
                 </h3>
                 
@@ -460,6 +500,17 @@ const ProductGrid: React.FC<ProductGridProps> = ({ onAddToCart, onToggleFavorite
         </div>
       </div>
     </section>
+
+    {selectedProduct && (
+      <ProductDetailModal
+        product={selectedProduct}
+        onClose={handleCloseModal}
+        onAddToCart={onAddToCart}
+        onToggleFavorite={onToggleFavorite}
+        isFavorite={isFavorite(selectedProduct.id)}
+      />
+    )}
+    </>
   );
 };
 
