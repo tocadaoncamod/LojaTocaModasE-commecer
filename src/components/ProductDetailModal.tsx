@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, ShoppingCart, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, ChevronLeft, ChevronRight, ShoppingCart, Heart, Zap } from 'lucide-react';
 
 interface ProductDetailModalProps {
   product: {
@@ -26,7 +27,14 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onToggleFavorite,
   isFavorite
 }) => {
+  const navigate = useNavigate();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  const handleBuyNow = () => {
+    onAddToCart(product);
+    onClose();
+    navigate('/checkout');
+  };
 
   const allImages = product.images && product.images.length > 0
     ? product.images
@@ -171,6 +179,15 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             )}
 
             <div className="border-t pt-6 space-y-3">
+              <button
+                onClick={handleBuyNow}
+                disabled={product.stock === 0}
+                className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:bg-gray-300 disabled:cursor-not-allowed text-lg shadow-lg"
+              >
+                <Zap className="h-6 w-6" />
+                Comprar Agora
+              </button>
+
               <button
                 onClick={() => onAddToCart(product)}
                 disabled={product.stock === 0}

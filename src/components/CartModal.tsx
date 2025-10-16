@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
-import { X, Plus, Minus, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
 import { CartItem } from '../types/cart';
 import { supabase } from '../lib/supabase';
 
@@ -28,6 +29,7 @@ const CartModal: React.FC<CartModalProps> = ({
   onRemoveItem,
   onClearCart
 }) => {
+  const navigate = useNavigate();
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
@@ -178,6 +180,11 @@ const CartModal: React.FC<CartModalProps> = ({
   };
 
   const handleStartCheckout = () => {
+    onClose();
+    navigate('/checkout');
+  };
+
+  const handleStartWhatsAppCheckout = () => {
     setShowCustomerForm(true);
   };
 
