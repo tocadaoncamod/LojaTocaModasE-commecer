@@ -15,6 +15,7 @@ const EvolutionApiPanel: React.FC = () => {
   const [instanceStatus, setInstanceStatus] = useState('');
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     setIsConfigured(evolutionApiService.isConfigured());
@@ -25,16 +26,28 @@ const EvolutionApiPanel: React.FC = () => {
   }, []);
 
   const loadInstanceStatus = async () => {
+    setLoading(true);
+    setErrorMessage('');
     try {
       const status = await evolutionApiService.getInstanceStatus();
       setInstanceStatus(status);
 
-      if (status !== 'open') {
+      if (status !== 'open' && status !== 'connected') {
         const qr = await evolutionApiService.getQRCode();
-        setQrCode(qr);
+        if (qr) {
+          setQrCode(qr);
+        } else {
+          setErrorMessage('Não foi possível obter o QR Code. Verifique se a instância existe.');
+        }
+      } else {
+        setQrCode(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading instance status:', error);
+      setErrorMessage(error.message || 'Erro ao carregar status da instância');
+      setInstanceStatus('error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -121,6 +134,22 @@ const EvolutionApiPanel: React.FC = () => {
     } catch (error) {
       console.error('Error sending bulk messages:', error);
       alert('Erro ao enviar mensagens');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateInstance = async () => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      await evolutionApiService.createInstance();
+      await loadInstanceStatus();
+      alert('Instância criada com sucesso!');
+    } catch (error: any) {
+      console.error('Error creating instance:', error);
+      setErrorMessage('Erro ao criar instância');
+      alert('Erro ao criar instância');
     } finally {
       setLoading(false);
     }
@@ -378,16 +407,47 @@ VITE_EVOLUTION_INSTANCE_NAME=sua_instancia`}
                   <div>
                     <h3 className="text-lg font-semibold mb-4">Configurações da Instância</h3>
 
-                    {qrCode && (
-                      <div className="bg-gray-50 p-6 rounded-lg mb-6">
+                    {errorMessage && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <p className="text-red-800">{errorMessage}</p>
+                      </div>
+                    )}
+
+                    {loading && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
+                        <RefreshCw className="w-8 h-8 mx-auto animate-spin text-blue-600 mb-2" />
+                        <p className="text-blue-800">Carregando...</p>
+                      </div>
+                    )}
+
+                    {!loading && qrCode && (
+                      <div className="bg-gray-50 p-6 rounded-lg mb-6 text-center">
                         <p className="text-sm text-gray-600 mb-4">
                           Escaneie o QR Code com seu WhatsApp:
                         </p>
-                        <img src={qrCode} alt="QR Code" className="mx-auto" />
+                        <img src={qrCode} alt="QR Code" className="mx-auto max-w-sm" />
+                        <p className="text-xs text-gray-500 mt-4">
+                          Abra o WhatsApp → Configurações → Aparelhos conectados → Conectar um aparelho
+                        </p>
+                      </div>
+                    )}
+
+                    {!loading && instanceStatus === 'open' && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6 text-center">
+                        <CheckCircle2 className="w-12 h-12 mx-auto text-green-600 mb-2" />
+                        <p className="text-green-800 font-semibold">WhatsApp Conectado!</p>
                       </div>
                     )}
 
                     <div className="space-y-4">
+                      <button
+                        onClick={handleCreateInstance}
+                        disabled={loading}
+                        className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {loading ? 'Criando...' : 'Criar/Reconectar Instância'}
+                      </button>
+
                       <button
                         onClick={handleSetupWebhook}
                         disabled={loading}
@@ -398,8 +458,10 @@ VITE_EVOLUTION_INSTANCE_NAME=sua_instancia`}
 
                       <button
                         onClick={loadInstanceStatus}
-                        className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+                        disabled={loading}
+                        className="w-full px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
                       >
+                        <RefreshCw className="w-4 h-4 inline mr-2" />
                         Atualizar Status
                       </button>
                     </div>

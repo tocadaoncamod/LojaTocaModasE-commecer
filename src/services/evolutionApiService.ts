@@ -119,10 +119,38 @@ export class EvolutionApiService {
     }
   }
 
+  async createInstance(): Promise<any> {
+    try {
+      const response = await fetch(
+        `${this.apiUrl}/instance/create`,
+        {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify({
+            instanceName: this.instanceName,
+            qrcode: true,
+            integration: 'WHATSAPP-BAILEYS'
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Error creating instance:', error);
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating instance:', error);
+      return null;
+    }
+  }
+
   async getInstanceInfo(): Promise<InstanceInfo> {
     try {
       const response = await fetch(
-        `${this.apiUrl}/instance/connect/${this.instanceName}`,
+        `${this.apiUrl}/instance/fetchInstances?instanceName=${this.instanceName}`,
         {
           method: 'GET',
           headers: this.getHeaders()
@@ -133,7 +161,8 @@ export class EvolutionApiService {
         throw new Error(`Failed to get instance info: ${response.statusText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      return Array.isArray(result) && result.length > 0 ? result[0] : result;
     } catch (error) {
       console.error('Error getting instance info:', error);
       throw error;
@@ -142,8 +171,30 @@ export class EvolutionApiService {
 
   async getQRCode(): Promise<string | null> {
     try {
-      const info = await this.getInstanceInfo();
-      return info.qrcode?.base64 || null;
+      const response = await fetch(
+        `${this.apiUrl}/instance/connect/${this.instanceName}`,
+        {
+          method: 'GET',
+          headers: this.getHeaders()
+        }
+      );
+
+      if (!response.ok) {
+        console.error('Error getting QR code:', response.statusText);
+        return null;
+      }
+
+      const data = await response.json();
+
+      if (data.qrcode?.base64) {
+        return data.qrcode.base64;
+      }
+
+      if (data.base64) {
+        return data.base64;
+      }
+
+      return null;
     } catch (error) {
       console.error('Error getting QR code:', error);
       return null;
@@ -153,7 +204,20 @@ export class EvolutionApiService {
   async getInstanceStatus(): Promise<string> {
     try {
       const info = await this.getInstanceInfo();
-      return info.instance.status;
+
+      if (info.instance?.state) {
+        return info.instance.state;
+      }
+
+      if (info.instance?.status) {
+        return info.instance.status;
+      }
+
+      if (info.state) {
+        return info.state;
+      }
+
+      return 'disconnected';
     } catch (error) {
       console.error('Error getting instance status:', error);
       return 'disconnected';
