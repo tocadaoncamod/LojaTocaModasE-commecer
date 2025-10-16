@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingBag, 
-  Users, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  Users,
   Store,
   Truck,
   LogOut,
   Menu,
-  X
+  X,
+  Brain
 } from 'lucide-react';
 import { AdminUser } from '../../types/admin';
 import { Order, Customer, DashboardStats } from '../../types/admin';
@@ -19,6 +20,7 @@ import CustomerManagement from './CustomerManagement';
 import SellerManagement from './SellerManagement';
 import SupplierManagement from './SupplierManagement';
 import AdminProfile from './AdminProfile';
+import AIPanel from './AIPanel';
 
 interface AdminPanelProps {
   user: AdminUser;
@@ -28,7 +30,7 @@ interface AdminPanelProps {
   onRefreshData: () => void;
 }
 
-type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers';
+type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers' | 'ai';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, customers, onRefreshData }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -114,6 +116,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
       label: 'Fornecedores',
       icon: Truck,
       color: 'text-orange-600'
+    },
+    {
+      id: 'ai' as ActiveTab,
+      label: 'Inteligência Artificial',
+      icon: Brain,
+      color: 'text-purple-600'
     }
   ];
 
@@ -131,6 +139,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
         return <SellerManagement />;
       case 'suppliers':
         return <SupplierManagement />;
+      case 'ai':
+        return <AIPanel />;
       default:
         return <AdminDashboard stats={getDashboardStats()} />;
     }
