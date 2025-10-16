@@ -6,6 +6,7 @@ import FeaturedSection from '../components/FeaturedSection';
 import ProductGrid from '../components/ProductGrid';
 import BenefitsSection from '../components/BenefitsSection';
 import ProductDetailModal from '../components/ProductDetailModal';
+import WhatsAppContact from '../components/WhatsAppContact';
 import { useCart } from '../hooks/useCart';
 import { useFavorites } from '../hooks/useFavorites';
 
@@ -49,6 +50,7 @@ const Home: React.FC<HomeProps> = ({ globalSearchTerm = '' }) => {
         searchTerm={globalSearchTerm}
       />
       <BenefitsSection />
+      <WhatsAppContact />
 
       {selectedProduct && (
         <ProductDetailModal

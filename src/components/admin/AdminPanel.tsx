@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Brain,
-  Share2
+  Share2,
+  MessageCircle
 } from 'lucide-react';
 import { AdminUser } from '../../types/admin';
 import { Order, Customer, DashboardStats } from '../../types/admin';
@@ -23,6 +24,7 @@ import SupplierManagement from './SupplierManagement';
 import AdminProfile from './AdminProfile';
 import AIPanel from './AIPanel';
 import SocialMediaPanel from './SocialMediaPanel';
+import EvolutionApiPanel from './EvolutionApiPanel';
 
 interface AdminPanelProps {
   user: AdminUser;
@@ -32,7 +34,7 @@ interface AdminPanelProps {
   onRefreshData: () => void;
 }
 
-type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers' | 'ai' | 'social';
+type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers' | 'ai' | 'social' | 'whatsapp';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, customers, onRefreshData }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -130,6 +132,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
       label: 'Redes Sociais',
       icon: Share2,
       color: 'text-blue-600'
+    },
+    {
+      id: 'whatsapp' as ActiveTab,
+      label: 'WhatsApp (Evolution)',
+      icon: MessageCircle,
+      color: 'text-green-600'
     }
   ];
 
@@ -151,6 +159,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
         return <AIPanel />;
       case 'social':
         return <SocialMediaPanel />;
+      case 'whatsapp':
+        return <EvolutionApiPanel />;
       default:
         return <AdminDashboard stats={getDashboardStats()} />;
     }
