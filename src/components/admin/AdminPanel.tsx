@@ -9,7 +9,8 @@ import {
   LogOut,
   Menu,
   X,
-  Brain
+  Brain,
+  Share2
 } from 'lucide-react';
 import { AdminUser } from '../../types/admin';
 import { Order, Customer, DashboardStats } from '../../types/admin';
@@ -21,6 +22,7 @@ import SellerManagement from './SellerManagement';
 import SupplierManagement from './SupplierManagement';
 import AdminProfile from './AdminProfile';
 import AIPanel from './AIPanel';
+import SocialMediaPanel from './SocialMediaPanel';
 
 interface AdminPanelProps {
   user: AdminUser;
@@ -30,7 +32,7 @@ interface AdminPanelProps {
   onRefreshData: () => void;
 }
 
-type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers' | 'ai';
+type ActiveTab = 'dashboard' | 'products' | 'orders' | 'customers' | 'sellers' | 'suppliers' | 'ai' | 'social';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, customers, onRefreshData }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -122,6 +124,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
       label: 'Inteligência Artificial',
       icon: Brain,
       color: 'text-purple-600'
+    },
+    {
+      id: 'social' as ActiveTab,
+      label: 'Redes Sociais',
+      icon: Share2,
+      color: 'text-blue-600'
     }
   ];
 
@@ -141,6 +149,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ user, onLogout, orders, custome
         return <SupplierManagement />;
       case 'ai':
         return <AIPanel />;
+      case 'social':
+        return <SocialMediaPanel />;
       default:
         return <AdminDashboard stats={getDashboardStats()} />;
     }
